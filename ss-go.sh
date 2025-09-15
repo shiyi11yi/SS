@@ -265,8 +265,6 @@ Set(){
 		ss_cipher=${cipher}
 		ss_verbose=${verbose}
 		Write_config
-		Del_iptables
-		Add_iptables
 		Restart
 	elif [[ "${ss_modify}" == "2" ]]; then
 		Read_config
@@ -323,12 +321,6 @@ Install(){
 	Service
 	echo -e "${Info} 开始写入 配置文件..."
 	Write_config
-	echo -e "${Info} 开始设置 iptables防火墙..."
-	Set_iptables
-	echo -e "${Info} 开始添加 iptables防火墙规则..."
-	Add_iptables
-	echo -e "${Info} 开始保存 iptables防火墙规则..."
-	Save_iptables
 	echo -e "${Info} 所有步骤 安装完毕，开始启动..."
 	Start
 }
@@ -372,8 +364,6 @@ Uninstall(){
 		[[ ! -z $PID ]] && kill -9 ${PID}
 		if [[ -e ${CONF} ]]; then
 			port=$(cat ${CONF}|grep 'PORT = '|awk -F 'PORT = ' '{print $NF}')
-			Del_iptables
-			Save_iptables
 		fi
 		if [[ ! -z $(crontab -l | grep "ss-go.sh monitor") ]]; then
 			crontab_monitor_cron_stop
@@ -581,40 +571,6 @@ crontab_monitor(){
 		fi
 	else
 		echo -e "${Info} [$(date "+%Y-%m-%d %H:%M:%S %u %Z")] Shadowsocks服务端 进程运行正常..." | tee -a ${LOG}
-	fi
-}
-Add_iptables(){
-	iptables -I INPUT -m state --state NEW -m tcp -p tcp --dport ${ss_port} -j ACCEPT
-	iptables -I INPUT -m state --state NEW -m udp -p udp --dport ${ss_port} -j ACCEPT
-	ip6tables -I INPUT -m state --state NEW -m tcp -p tcp --dport ${ss_port} -j ACCEPT
-	ip6tables -I INPUT -m state --state NEW -m udp -p udp --dport ${ss_port} -j ACCEPT
-}
-Del_iptables(){
-	iptables -D INPUT -m state --state NEW -m tcp -p tcp --dport ${port} -j ACCEPT
-	iptables -D INPUT -m state --state NEW -m udp -p udp --dport ${port} -j ACCEPT
-	ip6tables -D INPUT -m state --state NEW -m tcp -p tcp --dport ${port} -j ACCEPT
-	ip6tables -D INPUT -m state --state NEW -m udp -p udp --dport ${port} -j ACCEPT
-}
-Save_iptables(){
-	if [[ ${release} == "centos" ]]; then
-		service iptables save
-		service ip6tables save
-	else
-		iptables-save > /etc/iptables.up.rules
-		ip6tables-save > /etc/ip6tables.up.rules
-	fi
-}
-Set_iptables(){
-	if [[ ${release} == "centos" ]]; then
-		service iptables save
-		service ip6tables save
-		chkconfig --level 2345 iptables on
-		chkconfig --level 2345 ip6tables on
-	else
-		iptables-save > /etc/iptables.up.rules
-		ip6tables-save > /etc/ip6tables.up.rules
-		echo -e '#!/bin/bash\n/sbin/iptables-restore < /etc/iptables.up.rules\n/sbin/ip6tables-restore < /etc/ip6tables.up.rules' > /etc/network/if-pre-up.d/iptables
-		chmod +x /etc/network/if-pre-up.d/iptables
 	fi
 }
 Update_Shell(){
